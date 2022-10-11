@@ -36,6 +36,7 @@ switch(Options)
          
          
          surf([0,0;3,3],[0,5;0,5],[0.01,0.01;0.01,0.01],'CData',imread('concrete.jpg'),'FaceColor','texturemap');
+         xyzlabel;
         hold on
         
         
