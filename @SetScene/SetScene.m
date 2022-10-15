@@ -1,0 +1,73 @@
+classdef SetScene < handle
+    %SETSCENE Summary of this class goes here
+    %   Detailed explanation goes here
+    
+    properties (Access = private)
+        trayPose;
+        mesh_h=50;
+        LBR;
+        object;
+    end
+    
+    methods
+        function obj = SetScene(LBR,trayPose)
+            %SETSCENE Construct an instance of this class
+            %   Detailed explanation goes here
+            obj.LBR = LBR;
+            obj.trayPose.position = trayPose.position;
+        end
+        
+        function [mesh_h] = PlaceObject(obj,name, locations)
+            %METHOD1 Summary of this method goes here
+            %   Detailed explanation goes here
+            % Loads object into environment in specified position and orientation
+            
+            [f,v,data] = plyread(name,'tri');
+            
+            if nargin < 2
+                locations = [0,0,0];
+            end
+            
+            % Scale the colours to be 0-to-1 (they are originally 0-to-255)
+            try
+                try
+                    vertexColours = [data.vertex.red, data.vertex.green, data.vertex.blue] / 255;
+                catch
+                    try
+                        vertexColours = [data.face.red, data.face.green, data.face.blue] / 255;
+                    catch
+                        vertexColours = [0.5,0.5,0.5];
+                    end
+                end
+                
+                mesh_h = zeros(size(locations,1),1);
+                for i = 1: size(locations,1)
+                    % Plot the Trisurf
+                    mesh_h(i) = trisurf(f,v(:,1)+locations(i,1),v(:,2)+locations(i,2), v(:,3)+locations(i,3) ...
+                        ,'FaceVertexCData',vertexColours,'EdgeColor','none','EdgeLighting','none');
+                    
+                    % An alternative way of plotting with different edge colours and lighting
+                    %             mesh_h(i) = trisurf(f,v(:,1)+locations(i,1),v(:,2)+locations(i,2), v(:,3)+locations(i,3) ...
+                    %                 ,'FaceVertexCData',vertexColours,'EdgeColor','interp','EdgeLighting','flat');
+                    
+                end
+                % Catch the case where there are no colours
+            catch ME_1
+                disp(ME_1);
+            end
+        end
+        
+        function [objectArray] = BuildEnvironment(obj,trayPose,tableHeight)
+            hold on;
+            
+            oven = obj.PlaceObject("Oven_brickv1.ply",[0,-1,0]);
+            table = obj.PlaceObject("BenchTop1.ply",[0,0.5,0]);
+            shelf = obj.PlaceObject("ShelfDemos.ply",[0,2,0]);
+            tray = obj.PlaceObject("Baking_sheet_demo.ply",[0,-1,0.9135]);
+            
+            objectArray = {oven,table,shelf,tray};
+        end
+        
+    end
+end
+

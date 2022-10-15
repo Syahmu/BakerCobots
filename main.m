@@ -10,9 +10,22 @@ hold on
 
 %set some parameters
 tableHeight = 0.79;
-
+ovenHeight = 0.9135;
 %Load in robot arms
-ur3 = UR3;
+%UR3 = UR3robot;
 LBR = iiwa;
 
-SetScene(tableHeight, ur3, LBR);
+trayPose.position = [0,-0.8863,ovenHeight];
+
+trayHeight = 0.0268;
+
+%% render the environment
+setScene = SetScene(LBR,trayPose);
+
+camlight;
+
+objectArray = setScene.BuildEnvironment();
+
+iiwaStartingQ = [0,0,0,0,0,0,0];
+LBR.model.base = LBR.model.base * transl(0,0,0.79);
+LBR.model.animate(iiwaStartingQ)
