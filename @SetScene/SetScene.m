@@ -60,10 +60,10 @@ classdef SetScene < handle
         function [objectArray] = BuildEnvironment(obj,trayPose,tableHeight)
             hold on;
             
-            oven = obj.PlaceObject("Oven_brickv1.ply",[0,-1,0]);
+            oven = obj.PlaceObject("Oven_brickv1.ply",[0,-1.25,0]);
             table = obj.PlaceObject("BenchTop1.ply",[0,0.5,0]);
             shelf = obj.PlaceObject("ShelfDemos.ply",[0,2,0]);
-            tray = obj.PlaceObject("Baking_sheet_demo.ply",[0,-1,0.9135]);
+            tray = obj.PlaceObject("Baking_sheet_demo.ply",[0,-1.25,1.2]);
             
             objectArray = {oven,table,shelf,tray};
         end

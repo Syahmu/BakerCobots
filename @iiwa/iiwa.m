@@ -35,22 +35,35 @@ classdef iiwa < handle
             name = ['IIWA_',datestr(now,'yyyymmddTHHMMSSFFF')];
             %     end
             
-            L1 = Link([0 0.34 0 -pi/2]); % 0.33997
+            %L1 = Link('d',0,'a',0.34,'alpha',-pi/2,'offset',0,'qlim',[deg2rad(-170),deg2rad(170)]);
+            %L2 = Link('d',0,'a',0,'alpha',pi/2,'offset',-pi/2,'qlim',[deg2rad(-120),deg2rad(120)]);
+            %L3 = Link('d',0,'a',0.4,'alpha',pi/2,'offset',0,'qlim',[deg2rad(-170),deg2rad(170)]);
+            %L4 = Link('d',0,'a',0,'alpha',-pi/2,'offset',-pi/2,'qlim',[deg2rad(-120),deg2rad(120)]);
+            %L5 = Link('d',0,'a',0.4,'alpha',-pi/2,'offset',0,'qlim',[deg2rad(-170),deg2rad(170)]);
+            %L6 = Link('d',0,'a',0,'alpha',pi/2,'offset',0,'qlim',[deg2rad(-120),deg2rad(120)]);
+            %L7 = Link('d',0,'a',0.126,'alpha',0,'offset',0,'qlim',[deg2rad(-175),deg2rad(175)]);
             
-            L2 = Link([0 0 0 pi/2]);
+            L(1) = Link([0 0.34 0 -pi/2]); % 0.33997
+            L(2) = Link([0 0 0 pi/2]);
+            L(3) = Link([0 0.4 0 pi/2]);
+            L(4) = Link([0 0 0 -pi/2]);
+            L(5) = Link([0 0.4 0 -pi/2]); % 0.39998
+            L(6) = Link([0 0 0 pi/2]);
+            L(7) = Link([0 0.126 0 0]);
             
-            L3 = Link([0 0.4 0 pi/2]);
+            % Incorporate joint limits
+            L(1).qlim = [-170 170]*pi/180;
+            L(2).qlim = [-120 120]*pi/180;
+            L(3).qlim = [-170 170]*pi/180;
+            L(4).qlim = [-120 120]*pi/180;
+            L(5).qlim = [-170 170]*pi/180;
+            L(6).qlim = [-120 120]*pi/180;
+            L(7).qlim = [-175 175]*pi/180;
             
-            L4 = Link([0 0 0 -pi/2]);
             
-            L5 = Link([0 0.4 0 -pi/2]); % 0.39998
+            self.model = SerialLink(L,'name',name);
             
-            L6 = Link([0 0 0 pi/2]);
-            
-            L7 = Link([0 0.126 0 0]);
-            
-            
-            self.model = SerialLink([L1 L2 L3 L4 L5 L6 L7],'name',name);
+            self.model.base = self.model.base * transl(0,0,0);
         end
         %% PlotAndColourRobot
         % Given a robot index, add the glyphs (vertices and faces) and
