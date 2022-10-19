@@ -4,10 +4,11 @@ classdef Control < handle
     
     properties (Access = private)
         LBR;
-        ovenDoor;
         oven;
         table;
         shelf;
+        tray;
+        trayPose;
         moveVelocity;
         collisionPlot;
         trajectoryPlot;
@@ -21,25 +22,20 @@ classdef Control < handle
         endQ;
         collisionObjects;
         CollisionDetection;
-        GripperState;
-        LBRGripper1;
-        LBRGripper2;
     end
     
     methods
         
-        function obj = Control(LBR,GripperState,LBRGripper1,LBRGripper2,ovenDoor,objectArray, avoidCollisions, resolveMotionRateControl)
+        function obj = Control(LBR,objectArray, trayPose, avoidCollisions, resolveMotionRateControl)
             %CONTROL Construct an instance of this class
             %   Detailed explanation goes here
             obj.LBR = LBR;
-            obj.GripperState = GripperState;
-            obj.LBRGripper1 = LBRGripper1;
-            obj.LBRGripper2 = LBRGripper2;
-            obj.ovenDoor = ovenDoor;
             obj.oven = objectArray{1};
             obj.table = objectArray{2};
             obj.shelf = objectArray{3};
-            obj.collisionObjects = obj.CollisionObjects();  %not working
+            obj.tray = objectArray{4};
+            obj.trayPose = trayPose;
+            obj.collisionObjects = obj.CollisionObjects();
             obj.avoidCollisions = avoidCollisions;
             obj.resolveMotionRateControl = resolveMotionRateControl;
             obj.trajectorySteps = 100;
@@ -47,98 +43,27 @@ classdef Control < handle
             obj.moveVelocity = 1;
         end
         
-        function Start(obj)
+        function MoveTray(obj)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
-            %obj.MoveToHandle();
-            obj.OpenDoor();
+            obj.Start();
         end
         
-        function MoveToHandle(obj)
-            handleFkine = obj.ovenDoor.model.fkine(obj.ovenDoor.model.getpos());
-            handlePosition = [handleFkine(1,4),handleFkine(2,4),handleFkine(3,4)];
+        function Start(obj)
+            point = obj.trayPose.position;
             
-            point = handlePosition;
+            launching = false;
             
-            pStar = [500;500] %target point is camera centre (pixel coordinates)
-            initQ = obj.LBR.model.getpos() %Initial Q starting position
-            %which i have changed to [pi/2,0,0,0,0,-pi/2,0] in the main function for camera roughly facing oven
-            cam = CentralCamera('focal', 0.08, 'pixel', 10e-5, ... %perspective Camera (CentralCamera)
-            'resolution', [1024 1024], 'centre', [512 512], 'fps', 25, 'name', 'mycamera');
-            % with focal length of 0.08, 
-            % pixel size of 10e‐5, 
-            % a resolution of 1024 x 1024 with the centre point exactly in the middle of image plane, 
-            % which gets images at 25fps.
-
-            campos = obj.LBR.model.fkine(initialQ) %end effector position/camera position
-            lambda = 0.5; % visual servoing gain (0 < lambda < 1), can change to make faster/slower
-            depth = 1.2; %distance from camera to points (Needs to be roughly defined)
-            fps  = 25 %value can be chnaged for faster output
-            axis vis3d
-
-            cam.plot_camera('Tcam',campos); %display the camera in 3d at the end effector location
-            plot_sphere(point , 0.1, 'b') %plot the points in 3d
-            cam.plot(pStar, '*'); %display the target in the camera's image view
-            cam.plot(point, 'Tcam', campos, 'o');%display the current view using the projection of 3d points
-
-            Q = initialQ;
-            variablecampos = campos;
-
-            for i = 1:200
-
-                uv = cam.plot(point, 'Tcam', variablecampos, 'o'); %view of the camera through projecting the 3D points
-                e = pStar - uv %calculate the error in the image
-                J = cam.visjac_p(uv, depth); %current Image Jacobian
-                v = lambda * pinv(J) * e(:); %desired velocity of end effector (camera velocity)
-
-                Jacob = UR10.model.jacobn(Q);
-                JointVel = Jacob*v; %joint velocities
-
-                if JointVel >= pi % -180 <= joint velocities <= 180
-                    JointVel = pi
-                end
-                if JointVel <= -pi
-                    JointVel = -pi
-                end
-
-                DeltaT = 1/fps; 
-                newQ = Q + transpose(DeltaT * JointVel); %joint displacement
-                
-                                %Apply Displacement + update camera location
-                obj.LBR.model.animate(newQ);
-                cam.plot_camera('Tcam',variablecampos);
-
-                %Display IIWA + current camera location
-                cam.plot(point, 'Tcam', variablecampos, 'o'); 
-                variablecampos = obj.LBR.model.fkine(newQ); %updating variablecampos for loop
-
-                Q = newQ; %Q = newQ for loop repition
-
-                if abs(e) <= 1
-                    break;
-                end
-            end
-            
-            obj.MoveEndEffectorToPoint(point,false,obj.moveVelocity);
+            obj.MoveEndEffectorToPoint(point,false,obj.moveVelocity,launching);
         end
         
-        function OpenDoor(obj)
-            for i = 0:-0.025:-0.7
-                obj.ovenDoor.model.animate(i);
-                handleFkine = obj.ovenDoor.model.fkine(obj.ovenDoor.model.getpos());
-                handlePosition = [handleFkine(1,4),handleFkine(2,4),handleFkine(3,4)];
-                obj.MoveEndEffectorToPoint(handlePosition,false,obj.moveVelocity);
-            end
+        function MoveEndEffectorToPoint(obj,point,moveObject,velocity,launching)
+            obj.ResolveMotionRateControl(point,moveObject,velocity,launching);
         end
         
-        
-        function MoveEndEffectorToPoint(obj,point,moveObject,velocity)
-            obj.ResolveMotionRateControl(point,moveObject,velocity);
-        end
-        
-        function ResolveMotionRateControl(obj,endPoint,moveObject,velocity)
+        function ResolveMotionRateControl(obj,endPoint,moveObject,velocity,launching)
             % Calculate RMRC trajectory
-            obj.ResolveMotionRateControlCalculateTrajectory(endPoint,velocity);
+            obj.ResolveMotionRateControlCalculateTrajectory(endPoint,velocity,launching);
             
             %toggle if avoidcollisions is true
             if obj.avoidCollisions==true
@@ -152,7 +77,7 @@ classdef Control < handle
             obj.trajectoryPlot = [];
         end
         
-        function ResolveMotionRateControlCalculateTrajectory(obj,endPoint,velocity)
+        function ResolveMotionRateControlCalculateTrajectory(obj,endPoint,velocity,launching)
             
             % Delete previous trajectory plot
             delete(obj.trajectoryPlot);
@@ -206,8 +131,13 @@ classdef Control < handle
             for i=1:steps
                 x(1,i) = (1-s(i))*startPoint(1) + s(i)*endPoint(1); % Points in x
                 x(2,i) = (1-s(i))*startPoint(2) + s(i)*endPoint(2); % Points in y
-                x(3,i) = (1-s(i))*startPoint(3) + s(i)*endPoint(3); % Points in z
-                
+                if launching == true
+                    x(3,i) = startPoint(3) + sqrt((hypot(startPoint(2),startPoint(1)))^2-((hypot(x(1,i),x(2,i))))^2);% Points in z
+                elseif launching == false
+                    x(3,i) = (1-s(i))*startPoint(3) + s(i)*endPoint(3); % Points in z
+                    %     x(3,i) = endPoint(3) + 0.2*sin(i*delta); % Points in z
+                    
+                end
                 test = 1;
                 if velocity>3
                     test = -1;
@@ -265,6 +195,9 @@ classdef Control < handle
             disp('End Point Translation Error: ')
             disp(error);
             
+            disp('End Point Maximum Translation Error: ')
+            disp(obj.errorMax);
+            
             disp('End Point Rotation Error (degrees): ')
             disp(rad2deg(angleError(:,end))');
             
@@ -289,11 +222,6 @@ classdef Control < handle
                 
                 % Animate robot through a fraction of the total movement
                 obj.LBR.model.animate(Q);
-                obj.LBRGripper1.model.base = obj.LBR.model.fkine(obj.LBR.model.getpos()) * trotx(pi/2);
-                obj.LBRGripper1.model.animate(deg2rad(obj.GripperState));
-                obj.LBRGripper2.model.base = obj.LBR.model.fkine(obj.LBR.model.getpos()) * trotx(pi/2) * troty(pi);
-                obj.LBRGripper2.model.animate(deg2rad(obj.GripperState));
-                
                 
                 drawnow();
             end
@@ -301,9 +229,111 @@ classdef Control < handle
         
         
         %% Collision avoidance
+        
+        
+        function CollisionAvoidance(obj,moveObject,launching)
+            
+            % Number of collision objects created
+            numberOfObjects = size(obj.collisionObjects,2);
+            
+            % Initialising results container
+            results = zeros(1,numberOfObjects);
+            
+            % End joint config
+            obj.endQ = obj.qMatrix(end,:);
+            q = obj.endQ;
+            
+            while true  % Loop until possible to move to end q without collisions
+                
+                %                 if obj.resolveMotionRateControl == false
+                
+                if q ~= obj.endQ | obj.resolveMotionRateControl == false
+                    % Finding the robot joint positions required to move the end effector to the end point
+                    trajectory = jtraj(obj.LBR.model.getpos(),q,obj.trajectoryLength);
+                elseif q == obj.endQ & obj.resolveMotionRateControl == true
+                    
+                    velocity = obj.moveVelocity;
+                    endFkine = obj.LBR.model.fkine(q);
+                    endPoint = endFkine(1:3,4)';
+                    obj.ResolveMotionRateControlCalculateTrajectory(endPoint,velocity,launching);
+                    trajectory = obj.qMatrix();
+                end
+                %                 elseif obj.resolveMotionRateControl == true
+                %
+                %                     % Move to endPoint using RMRC
+                %                     transform = obj.LBR.model.fkine(q);
+                %                     endPoint = transform(1:3,4)';
+                %                     obj.ResolveMotionRateControlCalculateTrajectory(endPoint,obj.moveVelocity);
+                %
+                %                 end
+                
+                delete(obj.collisionPlot);
+                obj.collisionPlot = [];
+                
+                % Check for trajectory collision before animating for each obstacle
+                for i=1:1:numberOfObjects
+                    
+                    obstacle = obj.collisionObjects{i};
+                    
+                    results(i) = obj.CollisionDetection(trajectory,obstacle{1},obstacle{2},obstacle{3});
+                    
+                end
+                
+                % If collision is along trajectory calculate a random new trajectory
+                if ismember(1,results)
+                    
+                    disp('Collision along trajectory: recalculating alternate trajectory');
+                    
+                    % Calculate a random joint config and its end effector endPoint
+                    [q,endPoint] = obj.GenerateRandomQAndPoint();
+                else
+                    
+                    % Move to random pose that is not in collision. Set q to equal the goal end Q and check if it is now in collision
+                    if q ~= obj.endQ
+                        
+                        disp('Moving to random pose that is not in collision');
+                        
+                        obj.AnimateTrajectory(trajectory,moveObject);
+                        
+                        q = obj.endQ;
+                        
+                    else % if there is no collisions to move toward the final q pose
+                        
+                        disp('No collisions along trajectory: moving to target pose');
+                        
+                        %                         endQ = obj.endQ;
+                        
+                        break;
+                    end
+                    
+                end
+                
+                % Clear result collision checker
+                results = [];
+                
+            end
+            
+        end
+        
         function [collisionObjects] = CollisionObjects(obj)
-            % Oven Hitbox
-            centerpnt = [0,-1.3,1.2];
+            
+            % Define collision objects
+            
+            % Floor
+            
+            centerpnt = [0,0,-2.51];
+            %             side = 6;
+            height = 5;
+            plotOptions.plotFaces = true;
+            colour = false;
+            
+            [vertex,faces,faceNormals,patch] = obj.RectangularPrism(centerpnt-height/2, centerpnt+height/2,plotOptions,colour);
+            
+            benchSurface = {vertex,faces,faceNormals,patch};
+            
+            % Obstacle box
+            
+            centerpnt = [0,-0.9,1.2];
             height = 0.5;
             plotOptions.plotFaces = true;
             colour = true;
@@ -312,7 +342,7 @@ classdef Control < handle
             
             door = {vertex,faces,faceNormals,patch};
             
-            collisionObjects = {door};
+            collisionObjects = {benchSurface,door};
         end
         
         function [vertex,face,faceNormals,collisionObject] = RectangularPrism(obj,lower,upper,plotOptions,colour,axis_h)
@@ -406,7 +436,6 @@ classdef Control < handle
                 collisionObject = patch('Faces',face,'Vertices',vertex,'FaceVertexCData',tcolor,'FaceColor','flat','FaceAlpha',transparency,'lineStyle','none');
             end
         end
-        
     end
 end
 

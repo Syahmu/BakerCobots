@@ -35,10 +35,11 @@ classdef OvenDoorBot < handle
             name = ['what_',datestr(now,'yyyymmddTHHMMSSFFF')];
             %     end
             
-            L1 = Link('d',0,'a',-0.5555,'alpha',0,'qlim',deg2rad([-360 360]), 'offset',0)
+            L(1) = Link([0     -0.5555       0       0    1]);% PRISMATIC Link
             
+            L(1).qlim = [-0.7 0];
             
-            self.model = SerialLink([L1],'name',name);
+            self.model = SerialLink(L,'name',name);
             
             self.model.base = self.model.base * troty(pi/2);
             

@@ -3,18 +3,13 @@ classdef SetScene < handle
     %   Detailed explanation goes here
     
     properties (Access = private)
-        trayPose;
-        mesh_h=50;
-        LBR;
         object;
     end
     
     methods
-        function obj = SetScene(LBR,trayPose)
+        function obj = SetScene()
             %SETSCENE Construct an instance of this class
             %   Detailed explanation goes here
-            obj.LBR = LBR;
-            obj.trayPose.position = trayPose.position;
         end
         
         function [mesh_h] = PlaceObject(obj,name, locations)
@@ -63,9 +58,8 @@ classdef SetScene < handle
             oven = obj.PlaceObject("Oven_brickv1.ply",[0,-1.25,0]);
             table = obj.PlaceObject("BenchTop1.ply",[0,0.5,0]);
             shelf = obj.PlaceObject("ShelfDemos.ply",[0,2,0]);
-            tray = obj.PlaceObject("Baking_sheet_demo.ply",[0,-1.25,1.2]);
-            
-            objectArray = {oven,table,shelf,tray};
+
+            objectArray = {oven,table,shelf};
         end
         
     end
