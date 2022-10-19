@@ -54,14 +54,14 @@ classdef Control < handle
             obj.OpenDoor();
         end
         
-        function MoveToHandle(obj)
+        function MoveToHandle(obj) %MATHMATICALLY SEEMS TO WORK, HOWEVER DOESNT PLOT/ANIMATE CORRECTLY (VISUALSERVO.M WORKS COMPLETELY FOR COMPARISON)
             handleFkine = obj.ovenDoor.model.fkine(obj.ovenDoor.model.getpos());
             handlePosition = [handleFkine(1,4),handleFkine(2,4),handleFkine(3,4)];
             
             point = handlePosition;
             
-            pStar = [500;500] %target point is camera centre (pixel coordinates)
-            initQ = obj.LBR.model.getpos() %Initial Q starting position
+            pStar = [512;512] %target point is camera centre (pixel coordinates)
+            initQ = [2*pi/3,0,0,0,0,-2*pi/3,0] %Initial Q starting position
             %which i have changed to [pi/2,0,0,0,0,-pi/2,0] in the main function for camera roughly facing oven
             cam = CentralCamera('focal', 0.08, 'pixel', 10e-5, ... %perspective Camera (CentralCamera)
             'resolution', [1024 1024], 'centre', [512 512], 'fps', 25, 'name', 'mycamera');
@@ -70,29 +70,31 @@ classdef Control < handle
             % a resolution of 1024 x 1024 with the centre point exactly in the middle of image plane, 
             % which gets images at 25fps.
 
-            campos = obj.LBR.model.fkine(initialQ) %end effector position/camera position
+            campos = obj.LBR.model.fkine(initQ) %end effector position/camera position
             lambda = 0.5; % visual servoing gain (0 < lambda < 1), can change to make faster/slower
-            depth = 1.2; %distance from camera to points (Needs to be roughly defined)
+            depth = 0.6; %distance from camera to points (Needs to be roughly defined)
             fps  = 25 %value can be chnaged for faster output
             axis vis3d
 
             cam.plot_camera('Tcam',campos); %display the camera in 3d at the end effector location
-            plot_sphere(point , 0.1, 'b') %plot the points in 3d
-            cam.plot(pStar, '*'); %display the target in the camera's image view
-            cam.plot(point, 'Tcam', campos, 'o');%display the current view using the projection of 3d points
+            plot_sphere(point , 0.05, 'b') %plot the points in 3d
+            cam.plot(pStar, '*') %display the target in the camera's image view 
+            %STARS ARENT DISPAYED FOR SOME REASON
+            cam.plot(point, 'Tcam', campos, 'o')%display the current view using the projection of 3d points 
+            %CIRCLES ARENT DISPAYED FOR SOME REASON
 
-            Q = initialQ;
+            Q = initQ;
             variablecampos = campos;
 
             for i = 1:200
 
                 uv = cam.plot(point, 'Tcam', variablecampos, 'o'); %view of the camera through projecting the 3D points
-                e = pStar - uv %calculate the error in the image
+                e = pStar - uv; %calculate the error in the image
                 J = cam.visjac_p(uv, depth); %current Image Jacobian
                 v = lambda * pinv(J) * e(:); %desired velocity of end effector (camera velocity)
 
-                Jacob = UR10.model.jacobn(Q);
-                JointVel = Jacob*v; %joint velocities
+                Jacob = obj.LBR.model.jacobn(Q);
+                JointVel = transpose(Jacob)*v; %joint velocities
 
                 if JointVel >= pi % -180 <= joint velocities <= 180
                     JointVel = pi
@@ -102,14 +104,16 @@ classdef Control < handle
                 end
 
                 DeltaT = 1/fps; 
-                newQ = Q + transpose(DeltaT * JointVel); %joint displacement
+                newQ = Q + transpose(DeltaT * JointVel) %joint displacement
                 
-                                %Apply Displacement + update camera location
-                obj.LBR.model.animate(newQ);
-                cam.plot_camera('Tcam',variablecampos);
+                %Apply Displacement + update camera location
+                obj.LBR.model.animate(newQ) 
+                %DOESNT APPEAR TO ANIMATE CORERCTLY
+                cam.plot_camera('Tcam',variablecampos)
 
                 %Display IIWA + current camera location
-                cam.plot(point, 'Tcam', variablecampos, 'o'); 
+                cam.plot(point, 'Tcam', variablecampos, 'o') 
+                %DOESNT APPEAR TO PLOT CORERCTLY
                 variablecampos = obj.LBR.model.fkine(newQ); %updating variablecampos for loop
 
                 Q = newQ; %Q = newQ for loop repition
@@ -117,9 +121,10 @@ classdef Control < handle
                 if abs(e) <= 1
                     break;
                 end
+                cam.clf;
             end
             
-            obj.MoveEndEffectorToPoint(point,false,obj.moveVelocity);
+            %obj.MoveEndEffectorToPoint(point,false,obj.moveVelocity);
         end
         
         function OpenDoor(obj)
