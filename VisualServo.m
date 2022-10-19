@@ -1,7 +1,7 @@
 close all
 clear all
 
-
+%CURRENTLY FULLY WORKING EXAMPLE OF VISUAL SERVOING WITH THE IIWA ROBOT. USES 2 DEFINED POINTS TO ALIGN TO THE END EFFECTOR.
 
 %VisServo();
 
@@ -16,10 +16,10 @@ LBR = iiwa();
 %camera sees a square target in the image with its corners
 
 p1Star = [662; 362]; p2Star=[512; 62]; p3Star=[512; 962]; p4Star = [662; 662];
-pStar = [p2Star p3Star] %p2Star p3Star p4Star]%p1Star p2Star p3Star p4Star]
+pStar = [p2Star p3Star] %p2Star p3Star p4Star]%p1Star p2Star p3Star p4Star] %These points are the final location for the camera's image view
 
 %Cartesian coordinates of the targets corners
-
+%Actual coodrinates of the target points
 
 P1 = [0; -1; 0.5]; P2 = [0; -1; 1]%1.8; 0.25; 1.25]; P3 = [1.8; 0.25; 0.75]; P4 = [1.8; -0.25; 0.75];
 
@@ -27,7 +27,7 @@ P = [P1 P2] %P2 P3 P4]
 
 
 
-%UR10  initial joint angles
+%IIWA  initial joint angles
 
 %q0 = [pi/2 -pi/3 -pi/3 -pi/6 0 0];
 initQ = [pi/2,0,0,0,0,-pi/2,0]
