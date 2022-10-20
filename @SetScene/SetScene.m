@@ -58,6 +58,21 @@ classdef SetScene < handle
             oven = obj.PlaceObject("Oven_brickv1.ply",[0,-1.25,0]);
             table = obj.PlaceObject("BenchTop1.ply",[0,0.5,0]);
             shelf = obj.PlaceObject("ShelfDemos.ply",[0,2,0]);
+            
+            %add extra ply files
+           fence = obj.PlaceObject("barricades.ply",[1.5,0,0]);
+           EmergencyButton = obj.PlaceObject("EmergencyButton.ply",[-1,-3,2]);
+           ForkLift = obj.PlaceObject("Forklift.ply",[-1,3,0]);
+           Worker = obj.PlaceObject("avatar.ply",[0,-3.5,0]);
+           Pallets = obj.PlaceObject("pallet.ply",[2,-3.5,0]);
+           
+            %Add wall and floor Placements
+            surf([-1,-1;4,4],[-5,5;-5,5],[0.01,0.01;0.01,0.01],'CData',imread('porcelainFloor.jpg'),'FaceColor','texturemap');
+            surf([-1,-1;-1,-1],[-5,5;-5,5],[0.01,0.01;5,5],'CData',imread('wallTile.jpg'),'FaceColor','texturemap');
+            xyzlabel;
+           
+           
+       
 
             objectArray = {oven,table,shelf};
         end
