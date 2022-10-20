@@ -22,6 +22,11 @@ camlight;
 objectArray = setScene.BuildEnvironment();
 
 %loading the oven door
+tray = TrayBot;
+tray.model.base = tray.model.base * transl(0,-0.95,1.3);
+tray.model.animate(0);
+
+%loading the oven door
 ovenDoor = OvenDoorBot;
 doorStartingQ = 0;
 ovenDoor.model.base = ovenDoor.model.base * transl(-1.5,-0.82,0);
@@ -33,13 +38,17 @@ LBR.model.base = LBR.model.base * transl(-0.3,-0.3,0.79); % x z y
 LBR.model.animate(iiwaStartingQ);
 
 UR3StartingQ = zeros(1,7);
-UR3.model.base = UR3.model.base * transl(0,1,0.79); % x z y
+UR3.model.base = UR3.model.base * transl(0,1.3,0.79); % x z y
 UR3.model.animate(UR3StartingQ);
 
 avoidCollisions = true;
 resolvedMotionRateControl = true;
 
-GripperState = 70; %gripper angles 70-90
+open = 70;
+close = 90;
+GripperState = open; %gripper angles 70-90
+
+
 
 % gripper : note that its z axis is swapped with y
 LBRGripper1 = Gripper;
@@ -50,6 +59,6 @@ LBRGripper2.model.base = LBR.model.fkine(LBR.model.getpos()) * trotx(pi/2) * tro
 LBRGripper2.model.animate(deg2rad(GripperState));
 
 %insert inputs in the class function
-control = Control(LBR,GripperState,LBRGripper1,LBRGripper2,ovenDoor, objectArray, avoidCollisions, resolvedMotionRateControl);
+control = Control(LBR,tray,GripperState,LBRGripper1,LBRGripper2,ovenDoor, objectArray, avoidCollisions, resolvedMotionRateControl);
 %then run the function within the class
 control.Start();

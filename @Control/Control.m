@@ -24,14 +24,16 @@ classdef Control < handle
         GripperState;
         LBRGripper1;
         LBRGripper2;
+        tray;
     end
     
     methods
         
-        function obj = Control(LBR,GripperState,LBRGripper1,LBRGripper2,ovenDoor,objectArray, avoidCollisions, resolveMotionRateControl)
+        function obj = Control(LBR,tray,GripperState,LBRGripper1,LBRGripper2,ovenDoor,objectArray, avoidCollisions, resolveMotionRateControl)
             %CONTROL Construct an instance of this class
             %   Detailed explanation goes here
             obj.LBR = LBR;
+            obj.tray = tray;
             obj.GripperState = GripperState;
             obj.LBRGripper1 = LBRGripper1;
             obj.LBRGripper2 = LBRGripper2;
@@ -39,7 +41,7 @@ classdef Control < handle
             obj.oven = objectArray{1};
             obj.table = objectArray{2};
             obj.shelf = objectArray{3};
-            obj.collisionObjects = obj.CollisionObjects();  %not working
+            %obj.collisionObjects = obj.CollisionObjects();  %not working
             obj.avoidCollisions = avoidCollisions;
             obj.resolveMotionRateControl = resolveMotionRateControl;
             obj.trajectorySteps = 100;
@@ -52,79 +54,76 @@ classdef Control < handle
             %   Detailed explanation goes here
             %obj.MoveToHandle();
             obj.OpenDoor();
+            obj.MoveToTray();
+            obj.MoveTrayToTable();
         end
         
-        function MoveToHandle(obj) %MATHMATICALLY SEEMS TO WORK, HOWEVER DOESNT PLOT/ANIMATE CORRECTLY (VISUALSERVO.M WORKS COMPLETELY FOR COMPARISON)
+        function MoveToHandle(obj)
             handleFkine = obj.ovenDoor.model.fkine(obj.ovenDoor.model.getpos());
             handlePosition = [handleFkine(1,4),handleFkine(2,4),handleFkine(3,4)];
             
             point = handlePosition;
             
-            pStar = [512;512] %target point is camera centre (pixel coordinates)
-            initQ = [2*pi/3,0,0,0,0,-2*pi/3,0] %Initial Q starting position
+            pStar = [500;500] %target point is camera centre (pixel coordinates)
+            initQ = obj.LBR.model.getpos() %Initial Q starting position
             %which i have changed to [pi/2,0,0,0,0,-pi/2,0] in the main function for camera roughly facing oven
             cam = CentralCamera('focal', 0.08, 'pixel', 10e-5, ... %perspective Camera (CentralCamera)
-            'resolution', [1024 1024], 'centre', [512 512], 'fps', 25, 'name', 'mycamera');
-            % with focal length of 0.08, 
-            % pixel size of 10e‐5, 
-            % a resolution of 1024 x 1024 with the centre point exactly in the middle of image plane, 
+                'resolution', [1024 1024], 'centre', [512 512], 'fps', 25, 'name', 'mycamera');
+            % with focal length of 0.08,
+            % pixel size of 10e‐5,
+            % a resolution of 1024 x 1024 with the centre point exactly in the middle of image plane,
             % which gets images at 25fps.
-
-            campos = obj.LBR.model.fkine(initQ) %end effector position/camera position
+            
+            campos = obj.LBR.model.fkine(initialQ) %end effector position/camera position
             lambda = 0.5; % visual servoing gain (0 < lambda < 1), can change to make faster/slower
-            depth = 0.6; %distance from camera to points (Needs to be roughly defined)
+            depth = 1.2; %distance from camera to points (Needs to be roughly defined)
             fps  = 25 %value can be chnaged for faster output
             axis vis3d
-
+            
             cam.plot_camera('Tcam',campos); %display the camera in 3d at the end effector location
-            plot_sphere(point , 0.05, 'b') %plot the points in 3d
-            cam.plot(pStar, '*') %display the target in the camera's image view 
-            %STARS ARENT DISPAYED FOR SOME REASON
-            cam.plot(point, 'Tcam', campos, 'o')%display the current view using the projection of 3d points 
-            %CIRCLES ARENT DISPAYED FOR SOME REASON
-
-            Q = initQ;
+            plot_sphere(point , 0.1, 'b') %plot the points in 3d
+            cam.plot(pStar, '*'); %display the target in the camera's image view
+            cam.plot(point, 'Tcam', campos, 'o');%display the current view using the projection of 3d points
+            
+            Q = initialQ;
             variablecampos = campos;
-
+            
             for i = 1:200
-
+                
                 uv = cam.plot(point, 'Tcam', variablecampos, 'o'); %view of the camera through projecting the 3D points
-                e = pStar - uv; %calculate the error in the image
+                e = pStar - uv %calculate the error in the image
                 J = cam.visjac_p(uv, depth); %current Image Jacobian
                 v = lambda * pinv(J) * e(:); %desired velocity of end effector (camera velocity)
-
-                Jacob = obj.LBR.model.jacobn(Q);
-                JointVel = transpose(Jacob)*v; %joint velocities
-
+                
+                Jacob = UR10.model.jacobn(Q);
+                JointVel = Jacob*v; %joint velocities
+                
                 if JointVel >= pi % -180 <= joint velocities <= 180
                     JointVel = pi
                 end
                 if JointVel <= -pi
                     JointVel = -pi
                 end
-
-                DeltaT = 1/fps; 
-                newQ = Q + transpose(DeltaT * JointVel) %joint displacement
+                
+                DeltaT = 1/fps;
+                newQ = Q + transpose(DeltaT * JointVel); %joint displacement
                 
                 %Apply Displacement + update camera location
-                obj.LBR.model.animate(newQ) 
-                %DOESNT APPEAR TO ANIMATE CORERCTLY
-                cam.plot_camera('Tcam',variablecampos)
-
+                obj.LBR.model.animate(newQ);
+                cam.plot_camera('Tcam',variablecampos);
+                
                 %Display IIWA + current camera location
-                cam.plot(point, 'Tcam', variablecampos, 'o') 
-                %DOESNT APPEAR TO PLOT CORERCTLY
+                cam.plot(point, 'Tcam', variablecampos, 'o');
                 variablecampos = obj.LBR.model.fkine(newQ); %updating variablecampos for loop
-
+                
                 Q = newQ; %Q = newQ for loop repition
-
+                
                 if abs(e) <= 1
                     break;
                 end
-                cam.clf;
             end
             
-            %obj.MoveEndEffectorToPoint(point,false,obj.moveVelocity);
+            obj.MoveEndEffectorToPoint(point,obj.moveVelocity,0);
         end
         
         function OpenDoor(obj)
@@ -132,16 +131,42 @@ classdef Control < handle
                 obj.ovenDoor.model.animate(i);
                 handleFkine = obj.ovenDoor.model.fkine(obj.ovenDoor.model.getpos());
                 handlePosition = [handleFkine(1,4),handleFkine(2,4),handleFkine(3,4)];
-                obj.MoveEndEffectorToPoint(handlePosition,false,obj.moveVelocity);
+                obj.MoveEndEffectorToPoint(handlePosition,obj.moveVelocity,0);
             end
         end
         
-        
-        function MoveEndEffectorToPoint(obj,point,moveObject,velocity)
-            obj.ResolveMotionRateControl(point,moveObject,velocity);
+        function MoveToTray(obj)
+            trayFkine = obj.tray.model.fkine(obj.tray.model.getpos());
+            trayPosition = [trayFkine(1,4),trayFkine(2,4),trayFkine(3,4)];
+            obj.MoveEndEffectorToPoint(trayPosition,obj.moveVelocity,0);
         end
         
-        function ResolveMotionRateControl(obj,endPoint,moveObject,velocity)
+        function MoveTrayToTable(obj)
+            moveTray = true;
+            trayFkine = obj.tray.model.fkine(obj.tray.model.getpos());
+            point = [trayFkine(1,4),trayFkine(2,4)+0.2,trayFkine(3,4)];
+            obj.MoveEndEffectorToPoint(point,obj.moveVelocity,moveTray);
+            for i = 33:1:170
+                q = obj.LBR.model.getpos();
+                obj.LBR.model.animate([deg2rad(i),q(1,2),q(1,3),q(1,4),q(1,5),q(1,6),q(1,7)]);
+                obj.LBRGripper1.model.base = obj.LBR.model.fkine(obj.LBR.model.getpos()) * trotx(pi/2);
+                obj.LBRGripper1.model.animate(deg2rad(obj.GripperState));
+                obj.LBRGripper2.model.base = obj.LBR.model.fkine(obj.LBR.model.getpos()) * trotx(pi/2) * troty(pi);
+                obj.LBRGripper2.model.animate(deg2rad(obj.GripperState));
+                obj.tray.model.base = obj.LBR.model.fkine(obj.LBR.model.getpos()) * troty(-pi/2) * trotz(pi/2);
+                obj.tray.model.animate(0);
+                pause(0.05);
+            end
+            point = [0,0.39,0.9];
+            obj.MoveEndEffectorToPoint(point,obj.moveVelocity,moveTray);
+        end
+        
+        
+        function MoveEndEffectorToPoint(obj,point,velocity,moveTray)
+            obj.ResolveMotionRateControl(point,velocity,moveTray);
+        end
+        
+        function ResolveMotionRateControl(obj,endPoint,velocity,moveTray)
             % Calculate RMRC trajectory
             obj.ResolveMotionRateControlCalculateTrajectory(endPoint,velocity);
             
@@ -151,7 +176,7 @@ classdef Control < handle
                 %obj.CollisionAvoidance(moveObject,launching);
             end
             
-            obj.AnimateTrajectory(obj.qMatrix,moveObject);
+            obj.AnimateTrajectory(obj.qMatrix,moveTray);
             
             delete(obj.trajectoryPlot);
             obj.trajectoryPlot = [];
@@ -275,7 +300,7 @@ classdef Control < handle
             
         end
         
-        function AnimateTrajectory (obj,trajectory,moveObject)
+        function AnimateTrajectory (obj,trajectory,moveTray)
             
             % Iterate the robot arms through their movement
             for trajStep = 1:size(trajectory,1)
@@ -286,18 +311,17 @@ classdef Control < handle
                 fkine = obj.LBR.model.fkine(obj.LBR.model.getpos());
                 endEffectorPosition = fkine(1:3,4);
                 
-                if moveObject == true
-                    % Move object to the end effector position for each
-                    % trajectory step (simulates ball movement)
-                    obj.MoveObject(obj.object,endEffectorPosition,0);
-                end
-                
                 % Animate robot through a fraction of the total movement
                 obj.LBR.model.animate(Q);
                 obj.LBRGripper1.model.base = obj.LBR.model.fkine(obj.LBR.model.getpos()) * trotx(pi/2);
                 obj.LBRGripper1.model.animate(deg2rad(obj.GripperState));
                 obj.LBRGripper2.model.base = obj.LBR.model.fkine(obj.LBR.model.getpos()) * trotx(pi/2) * troty(pi);
                 obj.LBRGripper2.model.animate(deg2rad(obj.GripperState));
+                
+                if moveTray == true
+                    obj.tray.model.base = obj.LBR.model.fkine(obj.LBR.model.getpos()) * trotx(pi)* troty(-pi/2) * trotz(-pi/2);
+                    obj.tray.model.animate(0);
+                end
                 
                 
                 drawnow();
