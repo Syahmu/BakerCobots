@@ -26,6 +26,7 @@ classdef Control < handle
         tray;
         bread;
         UR3;
+        
     end
     
     methods
@@ -48,6 +49,7 @@ classdef Control < handle
             obj.trajectorySteps = 100;
             obj.errorMax = 1;
             obj.moveVelocity = 2;
+            %obj.collisionObjects = obj.CollisionObjects();
         end
         
         %% Start
@@ -152,19 +154,19 @@ classdef Control < handle
         %% Move Tray To Table
         function MoveTrayToTable(obj)
             moveTray = true;
-            point = [0,-0.9,1.2];
+            point = [0,-0.6,1.2];
             facing = 1;
             obj.MoveEndEffectorToPoint(point,obj.moveVelocity,moveTray,facing);
             
             facing = 2;
-            point = [0.6,0,1.2];
+            point = [0.5,0,1.2];
             obj.MoveEndEffectorToPoint(point,obj.moveVelocity,moveTray,facing);
             
             facing = 3;
-            point = [0,0.4,1.2];
+            point = [0,0.5,1.2];
             obj.MoveEndEffectorToPoint(point,obj.moveVelocity,moveTray,facing);
             
-            point = [0,0.4,1];
+            point = [0,0.4,0.9];
             obj.MoveEndEffectorToPoint(point,obj.moveVelocity,moveTray,facing);
         end
         
@@ -608,7 +610,10 @@ classdef Control < handle
                 drawnow();
             end
         end
-
+        
+        
+        
+        
     end
     
 end

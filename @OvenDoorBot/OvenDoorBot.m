@@ -39,6 +39,8 @@ classdef OvenDoorBot < handle
             
             L(1).qlim = [-0.7 0];
             
+            %L(1).offset = -0.7;
+            
             self.model = SerialLink(L,'name',name);
             
             self.model.base = self.model.base * troty(pi/2);

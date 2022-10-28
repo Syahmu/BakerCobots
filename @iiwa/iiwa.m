@@ -58,7 +58,7 @@ classdef iiwa < handle
             L(4).qlim = [-120 120]*pi/180;
             L(5).qlim = [-170 170]*pi/180;
             L(6).qlim = [-120 120]*pi/180;
-            L(7).qlim = [-175 175]*pi/180;
+            L(7).qlim = [-360 360]*pi/180;
             
             
             self.model = SerialLink(L,'name',name);

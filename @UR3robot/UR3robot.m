@@ -35,7 +35,7 @@ classdef UR3robot < handle
             L4 = Link('d',0.11235,'a',0,'alpha',pi/2,'qlim',deg2rad([-360 360]),'offset', 0);
             L5 = Link('d',0.08535,'a',0,'alpha',-pi/2,'qlim',deg2rad([-360,360]), 'offset',0);
             L6 = Link('d',0.0819,'a',0,'alpha',0,'qlim',deg2rad([-360,360]), 'offset', 0);
-            L7 = Link('d',0,'a',0,'alpha',0,'qlim',deg2rad([-360,360]), 'offset', 0);
+            L7 = Link('d',0.13,'a',0,'alpha',0,'qlim',deg2rad([-360,360]), 'offset', 0);
              
             self.model = SerialLink([L1 L2 L3 L4 L5 L6 L7],'name',name);
             self.model.base = self.model.base * transl(0,0,0);

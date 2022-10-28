@@ -35,13 +35,13 @@ classdef TrayBot < handle
             name = ['what_',datestr(now,'yyyymmddTHHMMSSFFF')];
             %     end
             
-            L(1) = Link([0     0.1853      0       0    1]);% PRISMATIC Link
+            L(1) = Link([0     0.1853      0       0    0]);% PRISMATIC Link
             
             L(1).qlim = [0 360]*pi/180;
             
             self.model = SerialLink(L,'name',name);
             
-            self.model.base = self.model.base;
+            self.model.base = self.model.base * trotx(-pi/2);
             
             q = zeros(1)
             

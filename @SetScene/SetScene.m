@@ -52,12 +52,12 @@ classdef SetScene < handle
             end
         end
         
-        function [objectArray] = BuildEnvironment(obj,trayPose,tableHeight)
+        function [objectArray] = BuildEnvironment(obj)
             hold on;
             
             oven = obj.PlaceObject("Oven_brickv1.ply",[0,-1.25,0]);
-            table = obj.PlaceObject("BenchTop1.ply",[0,0.5,0]);
-            shelf = obj.PlaceObject("ShelfDemos.ply",[0,2,0]);
+            table = obj.PlaceObject("BenchTop1.ply",[0,0.3,0]);
+            shelf = obj.PlaceObject("ShelfDemos.ply",[0,1.6,0]);
             
             %add extra ply files
            fence = obj.PlaceObject("barricades.ply",[1.5,0,0]);
